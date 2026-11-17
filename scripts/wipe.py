@@ -17,6 +17,13 @@ import cv2, numpy as np
 
 GAMMA = 2.2
 
+PRESETS = {
+    "default":   dict(duration=0.45, shutter=1.6, snap=4.0, chroma=0.012, bloom=0.35, exposure=0.25, grain=0.02),
+    "snappy":    dict(duration=0.33, shutter=2.0, snap=5.5, chroma=0.015, bloom=0.30, exposure=0.30, grain=0.02),
+    "cinematic": dict(duration=0.70, shutter=1.2, snap=3.0, chroma=0.008, bloom=0.50, exposure=0.20, grain=0.03),
+    "vertical":  dict(duration=0.40, shutter=1.8, snap=4.5, chroma=0.012, bloom=0.35, exposure=0.25, grain=0.02, size="1080x1920"),
+}
+
 def cover(frame, W, H):
     h, w = frame.shape[:2]
     s = max(W / w, H / h)
@@ -72,7 +79,7 @@ def whip_frame(a, b, i, D, o, vec, W, H):
         out += np.random.normal(0, o.grain * (0.4 + speed), (H, W, 1)).astype(np.float32)
     return (np.clip(out, 0, 1) * 255 + 0.5).astype(np.uint8)
 
-def make_whoosh(path, dur, cut_t, total, sr=48000, direction=1):
+def make_whoosh(path, dur, cut_t, total, sr=48000, direction=0):
     """Noise with a sweeping low-pass (rising then falling), asymmetric envelope, plus impact."""
     n = int(total * sr); rng = np.random.default_rng(7)
     noise = rng.standard_normal(n).astype(np.float32)
@@ -90,9 +97,14 @@ def make_whoosh(path, dur, cut_t, total, sr=48000, direction=1):
     m = (t >= cut_t) & (t < cut_t + 0.5)                            # soft thump at the cut
     y[m] += 0.9 * np.sin(2 * np.pi * (70 - 25 * (t[m] - cut_t)) * (t[m] - cut_t)) * np.exp(-9 * (t[m] - cut_t))
     y *= 0.85 / (np.abs(y).max() + 1e-9)
+    pan = np.full(n, 0.5, np.float32)                               # 0 = left, 1 = right
+    if direction:                                                   # sound travels with the whip
+        pan = np.clip(0.5 - direction * (x - 0.5), 0, 1)
+    L, R = y * np.cos(pan * np.pi / 2), y * np.sin(pan * np.pi / 2)
+    st = np.stack([L, R], 1)
     with wave.open(path, "wb") as w:
-        w.setnchannels(1); w.setsampwidth(2); w.setframerate(sr)
-        w.writeframes((y * 32767).astype("<i2").tobytes())
+        w.setnchannels(2); w.setsampwidth(2); w.setframerate(sr)
+        w.writeframes((st * 32767).astype("<i2").tobytes())
 
 def has_audio(p):
     r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=index",
@@ -103,17 +115,20 @@ def main():
     p = argparse.ArgumentParser()
     p.add_argument("a"); p.add_argument("b"); p.add_argument("out")
     p.add_argument("--dir", default="left", choices=["left", "right", "up", "down"])
-    p.add_argument("--duration", type=float, default=0.45)
-    p.add_argument("--shutter", type=float, default=1.6, help="shutter length in frame-times (1.0 = 360deg)")
+    p.add_argument("--duration", type=float, default=None)
+    p.add_argument("--shutter", type=float, default=None, help="shutter length in frame-times (1.0 = 360deg)")
     p.add_argument("--samples", type=int, default=400, help="max sub-frames per output frame")
-    p.add_argument("--snap", type=float, default=4.0, help="ease exponent; higher = more violent whip")
-    p.add_argument("--chroma", type=float, default=0.012)
-    p.add_argument("--bloom", type=float, default=0.35)
-    p.add_argument("--exposure", type=float, default=0.25)
-    p.add_argument("--grain", type=float, default=0.02)
-    p.add_argument("--size"); p.add_argument("--fps", type=float)
+    p.add_argument("--snap", type=float, default=None, help="ease exponent; higher = more violent whip")
+    p.add_argument("--chroma", type=float, default=None)
+    p.add_argument("--bloom", type=float, default=None)
+    p.add_argument("--exposure", type=float, default=None)
+    p.add_argument("--grain", type=float, default=None)
+    p.add_argument("--size", default=None); p.add_argument("--fps", type=float)
     p.add_argument("--sfx", action="store_true"); p.add_argument("--keep-audio", action="store_true")
+    p.add_argument("--preset", default="default", choices=sorted(PRESETS))
     o = p.parse_args()
+    for k, v in PRESETS[o.preset].items():     # explicit flags win over the preset
+        if getattr(o, k, None) is None: setattr(o, k, v)
 
     c = cv2.VideoCapture(o.a); W, H = int(c.get(3)), int(c.get(4)); fa = c.get(cv2.CAP_PROP_FPS); c.release()
     if o.size: W, H = map(int, o.size.lower().split("x"))
@@ -152,7 +167,7 @@ def main():
         inputs += ["-i", o.a, "-i", o.b]
         fc.append(f"[1:a]atrim=0:{dA:.3f}[a1];[a1][2:a]acrossfade=d={D / fps:.3f}[ab]"); amap = "[ab]"
     if o.sfx:
-        wav = os.path.join(tmp, "w.wav"); make_whoosh(wav, D / fps, cut_t, cut_t + 1.2)
+        wav = os.path.join(tmp, "w.wav"); make_whoosh(wav, D / fps, cut_t, cut_t + 1.2, direction={'left': 1, 'right': -1}.get(o.dir, 0))
         idx = len(inputs) // 2; inputs += ["-i", wav]
         if amap:
             fc.append(f"{amap}[{idx}:a]amix=inputs=2:normalize=0:duration=first[am]"); amap = "[am]"
@@ -160,7 +175,7 @@ def main():
             fc.append(f"[{idx}:a]apad[am]"); amap = "[am]"
     cmd = ["ffmpeg", "-v", "error", "-y"] + inputs
     if amap:
-        cmd += ["-filter_complex", ";".join(fc), "-map", "0:v", "-map", amap, "-c:v", "copy", "-c:a", "aac", "-b:a", "192k", "-shortest"]
+        cmd += ["-filter_complex", ";".join(fc), "-map", "0:v", "-map", amap, "-c:v", "copy", "-c:a", "aac", "-ac", "2", "-b:a", "192k", "-shortest"]
     else:
         cmd += ["-map", "0:v", "-c:v", "copy"]
     subprocess.run(cmd + [o.out], check=True)
