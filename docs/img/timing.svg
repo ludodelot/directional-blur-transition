@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 380" width="900" height="380" role="img" aria-labelledby="t d"><title id="t">Whip timing</title><desc id="d">Position follows an expo ease; speed peaks at the cut; blur, chroma, bloom, exposure and grain follow speed.</desc><style>
+:root{--fg:#1f2328;--mut:#59636e;--line:#c9d1d9;--fill:#f6f8fa;--a:#1f6feb;--b:#d1242f;--soft:#ddf4ff;--softb:#ffebe9}
+@media (prefers-color-scheme:dark){:root{--fg:#e6edf3;--mut:#9198a1;--line:#3d444d;--fill:#151b23;--a:#58a6ff;--b:#ff7b72;--soft:#0c2d6b;--softb:#5a1e24}}
+text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;fill:var(--fg);font-size:15px}
+.mut{fill:var(--mut);font-size:13px}.t{font-size:18px;font-weight:600}.c{text-anchor:middle}
+.box{fill:var(--fill);stroke:var(--line);stroke-width:1.5}
+.A{fill:var(--soft);stroke:var(--a);stroke-width:2}.B{fill:var(--softb);stroke:var(--b);stroke-width:2}
+.cam{fill:none;stroke:var(--fg);stroke-width:2.5;stroke-dasharray:7 5}
+.arr{stroke:var(--fg);stroke-width:2;fill:none}
+.ax{stroke:var(--line);stroke-width:1.5;fill:none}
+</style>
+<defs><marker id="h" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="currentColor" style="fill:var(--fg)"/></marker></defs><text x="30" y="38" class="t">3 · Timing: position, speed, and what scales with speed</text>
+<path d="M70 80 V300 H510" class="ax"/>
+<text x="70" y="328" class="mut">first frame (A)</text><text x="500" y="328" class="mut" style="text-anchor:end">last frame (B)</text>
+<path d="M70.0 300.0 L73.6 300.0 L77.2 300.0 L80.8 300.0 L84.3 300.0 L87.9 300.0 L91.5 300.0 L95.1 300.0 L98.7 300.0 L102.2 300.0 L105.8 299.9 L109.4 299.9 L113.0 299.8 L116.6 299.8 L120.2 299.7 L123.8 299.6 L127.3 299.5 L130.9 299.4 L134.5 299.2 L138.1 299.0 L141.7 298.8 L145.2 298.6 L148.8 298.3 L152.4 297.9 L156.0 297.6 L159.6 297.1 L163.2 296.7 L166.8 296.1 L170.3 295.5 L173.9 294.8 L177.5 294.1 L181.1 293.2 L184.7 292.3 L188.2 291.3 L191.8 290.2 L195.4 289.0 L199.0 287.7 L202.6 286.3 L206.2 284.7 L209.8 283.0 L213.3 281.2 L216.9 279.3 L220.5 277.2 L224.1 274.9 L227.7 272.5 L231.2 269.9 L234.8 267.2 L238.4 264.2 L242.0 261.1 L245.6 257.7 L249.2 254.2 L252.8 250.4 L256.3 246.4 L259.9 242.2 L263.5 237.7 L267.1 232.9 L270.7 227.9 L274.2 222.6 L277.8 217.0 L281.4 211.2 L285.0 205.0 L288.6 198.8 L292.2 193.0 L295.8 187.4 L299.3 182.1 L302.9 177.1 L306.5 172.3 L310.1 167.8 L313.7 163.6 L317.2 159.6 L320.8 155.8 L324.4 152.3 L328.0 148.9 L331.6 145.8 L335.2 142.8 L338.8 140.1 L342.3 137.5 L345.9 135.1 L349.5 132.8 L353.1 130.7 L356.7 128.8 L360.2 127.0 L363.8 125.3 L367.4 123.7 L371.0 122.3 L374.6 121.0 L378.2 119.8 L381.8 118.7 L385.3 117.7 L388.9 116.8 L392.5 115.9 L396.1 115.2 L399.7 114.5 L403.2 113.9 L406.8 113.3 L410.4 112.9 L414.0 112.4 L417.6 112.1 L421.2 111.7 L424.8 111.4 L428.3 111.2 L431.9 111.0 L435.5 110.8 L439.1 110.6 L442.7 110.5 L446.2 110.4 L449.8 110.3 L453.4 110.2 L457.0 110.2 L460.6 110.1 L464.2 110.1 L467.8 110.0 L471.3 110.0 L474.9 110.0 L478.5 110.0 L482.1 110.0 L485.7 110.0 L489.2 110.0 L492.8 110.0 L496.4 110.0 L500.0 110.0" fill="none" style="stroke:var(--a);stroke-width:3"/>
+<path d="M71.8 300.0 L75.4 300.0 L79.0 300.0 L82.5 300.0 L86.1 299.9 L89.7 299.9 L93.3 299.8 L96.9 299.6 L100.5 299.5 L104.0 299.3 L107.6 299.0 L111.2 298.7 L114.8 298.4 L118.4 298.0 L122.0 297.5 L125.5 296.9 L129.1 296.3 L132.7 295.5 L136.3 294.7 L139.9 293.8 L143.5 292.8 L147.0 291.7 L150.6 290.5 L154.2 289.2 L157.8 287.8 L161.4 286.2 L165.0 284.6 L168.5 282.7 L172.1 280.8 L175.7 278.7 L179.3 276.5 L182.9 274.1 L186.5 271.5 L190.0 268.8 L193.6 265.9 L197.2 262.9 L200.8 259.6 L204.4 256.2 L208.0 252.6 L211.5 248.9 L215.1 244.9 L218.7 240.7 L222.3 236.3 L225.9 231.7 L229.5 226.9 L233.0 221.8 L236.6 216.6 L240.2 211.1 L243.8 205.3 L247.4 199.3 L251.0 193.1 L254.5 186.6 L258.1 179.9 L261.7 172.9 L265.3 165.7 L268.9 158.1 L272.5 150.3 L276.0 142.2 L279.6 133.9 L283.2 125.2 L286.8 125.2 L290.4 133.9 L294.0 142.2 L297.5 150.3 L301.1 158.1 L304.7 165.7 L308.3 172.9 L311.9 179.9 L315.5 186.6 L319.0 193.1 L322.6 199.3 L326.2 205.3 L329.8 211.1 L333.4 216.6 L337.0 221.8 L340.5 226.9 L344.1 231.7 L347.7 236.3 L351.3 240.7 L354.9 244.9 L358.5 248.9 L362.0 252.6 L365.6 256.2 L369.2 259.6 L372.8 262.9 L376.4 265.9 L380.0 268.8 L383.5 271.5 L387.1 274.1 L390.7 276.5 L394.3 278.7 L397.9 280.8 L401.5 282.7 L405.0 284.6 L408.6 286.2 L412.2 287.8 L415.8 289.2 L419.4 290.5 L423.0 291.7 L426.5 292.8 L430.1 293.8 L433.7 294.7 L437.3 295.5 L440.9 296.3 L444.5 296.9 L448.0 297.5 L451.6 298.0 L455.2 298.4 L458.8 298.7 L462.4 299.0 L466.0 299.3 L469.5 299.5 L473.1 299.6 L476.7 299.8 L480.3 299.9 L483.9 299.9 L487.5 300.0 L491.0 300.0 L494.6 300.0 L498.2 300.0" fill="none" style="stroke:var(--b);stroke-width:3"/>
+<path d="M285.0 80 V300" class="ax" style="stroke-dasharray:5 5"/>
+<text x="293.0" y="96" class="mut">the cut = peak speed</text>
+<rect x="259.0" y="296" width="52" height="8" rx="3" style="fill:var(--fg);opacity:.5"/>
+<text x="285.0" y="348" class="c mut">shutter window: sub-frames averaged in linear light</text>
+<text x="78" y="232" style="fill:var(--a)">position (expo ease)</text>
+<text x="262" y="126" style="fill:var(--b);text-anchor:end">speed</text>
+<g transform="translate(580,100)">
+<text x="0" y="0" class="t" style="font-size:16px">Scale with speed</text>
+<text x="0" y="30">• blur length (sub-frame count)</text>
+<text x="0" y="54">• chromatic split along the motion</text>
+<text x="0" y="78">• highlight bloom</text>
+<text x="0" y="102">• over-exposure</text>
+<text x="0" y="126">• grain</text>
+<text x="0" y="168" class="mut">All of them are zero at rest, so the first</text><text x="0" y="188" class="mut">and last frames are the untouched clips.</text>
+</g>
+</svg>

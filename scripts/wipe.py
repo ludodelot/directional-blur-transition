@@ -4,24 +4,25 @@
 A virtual camera travels across a strip [A | B]. Motion blur comes from averaging
 many sub-frames inside the shutter window (in linear light, so highlights streak),
 with velocity following an expo-style ease. Extras: chromatic split along the
-motion, highlight bloom, overexposure at peak speed, grain, and a synthesised
-whoosh + impact. A keeps playing and B starts playing during the move (overlap).
+motion, highlight bloom, overexposure at peak speed and grain.
+A keeps playing and B starts playing during the move (overlap). No sound is synthesised.
 
-usage: wipe.py A.mp4 B.mp4 OUT.mp4 [--dir left|right|up|down] [--duration 0.45]
+usage: wipe.py A.mp4 B.mp4 OUT.mp4 [--dir left|right|up|down|ur|ul|dr|dl] [--duration 0.45]
        [--shutter 1.6] [--samples 400] [--snap 4] [--chroma 0.012] [--bloom 0.35]
-       [--exposure 0.25] [--grain 0.02] [--size WxH] [--fps N] [--sfx] [--keep-audio]
+       [--exposure 0.25] [--grain 0.02] [--zoom 0] [--size WxH] [--fps N]
+       [--only] [--keep-audio]
 Needs python3 + numpy + opencv-python, and ffmpeg/ffprobe.
 """
-import argparse, collections, math, os, subprocess, sys, tempfile, wave
+import argparse, collections, math, os, subprocess, sys, tempfile
 import cv2, numpy as np
 
 GAMMA = 2.2
 
 PRESETS = {
-    "default":   dict(duration=0.45, shutter=1.6, snap=4.0, chroma=0.012, bloom=0.35, exposure=0.25, grain=0.02),
-    "snappy":    dict(duration=0.33, shutter=2.0, snap=5.5, chroma=0.015, bloom=0.30, exposure=0.30, grain=0.02),
-    "cinematic": dict(duration=0.70, shutter=1.2, snap=3.0, chroma=0.008, bloom=0.50, exposure=0.20, grain=0.03),
-    "vertical":  dict(duration=0.40, shutter=1.8, snap=4.5, chroma=0.012, bloom=0.35, exposure=0.25, grain=0.02, size="1080x1920"),
+    "default":   dict(duration=0.45, shutter=1.6, snap=4.0, chroma=0.012, bloom=0.35, exposure=0.25, grain=0.02, zoom=0.0),
+    "snappy":    dict(duration=0.33, shutter=2.0, snap=5.5, chroma=0.015, bloom=0.30, exposure=0.30, grain=0.02, zoom=0.0),
+    "cinematic": dict(duration=0.70, shutter=1.2, snap=3.0, chroma=0.008, bloom=0.50, exposure=0.20, grain=0.03, zoom=0.0),
+    "vertical":  dict(duration=0.40, shutter=1.8, snap=4.5, chroma=0.012, bloom=0.35, exposure=0.25, grain=0.02, zoom=0.0, size="1080x1920"),
 }
 
 def cover(frame, W, H):
@@ -63,6 +64,46 @@ def whip_frame(a, b, i, D, o, vec, W, H):
     # speed (px/frame, normalised) at this frame
     e1, e0 = ease((i + 1) / D, o.snap), ease(i / D, o.snap)
     speed = min(1.0, (e1 - e0) * D / 2.2)           # 0..1ish, ~peak at middle
+    return finish(acc, speed, o, W, H, (1.0, 0.0) if horizontal else (0.0, 1.0), L)
+
+DIAG = {"ur": (1, -1), "ul": (-1, -1), "dr": (1, 1), "dl": (-1, 1)}   # (vx, vy): window travel direction
+
+def whip_frame_diag(a, b, i, D, o, W, H):
+    """Diagonal whip. A and B sit on opposite corners of a 2W x 2H canvas; the empty corners are filled by
+    mirror-tiling each clip (no seams), and the two are cross-faded while the window travels between them."""
+    vx, vy = DIAG[o.dir]
+    A = (a.astype(np.float32) / 255.0) ** GAMMA
+    B = (b.astype(np.float32) / 255.0) ** GAMMA
+    ax, bx = (0, W) if vx > 0 else (W, 0)
+    ay, by = (0, H) if vy > 0 else (H, 0)
+    def ext(X, qx, qy):
+        C = np.zeros((2 * H, 2 * W, 3), np.float32)
+        for cx in (0, W):
+            for cy in (0, H):
+                t = X[::-1] if cy != qy else X
+                C[cy:cy + H, cx:cx + W] = t[:, ::-1] if cx != qx else t
+        return C
+    Ae, Be = ext(A, ax, ay), ext(B, bx, by)
+    acc = np.zeros((H, W, 3), np.float32)
+    u0, u1 = (i + 0.5 - o.shutter / 2) / D, (i + 0.5 + o.shutter / 2) / D
+    travel = abs(ease(u1, o.snap) - ease(u0, o.snap)) * math.hypot(W, H)
+    K = int(min(o.samples, max(4, travel / 2))) if o.samples > 0 else 4
+    for s_ in range(K):
+        u = (i + 0.5 + ((s_ + 0.5) / K - 0.5) * o.shutter) / D
+        e = ease(u, o.snap)
+        x0 = int(round(ax + (bx - ax) * e)); y0 = int(round(ay + (by - ay) * e))
+        w = min(max((e - 0.40) / 0.20, 0.0), 1.0); w = w * w * (3 - 2 * w)
+        acc += (1 - w) * Ae[y0:y0 + H, x0:x0 + W] + w * Be[y0:y0 + H, x0:x0 + W]
+    acc /= K
+    e1, e0 = ease((i + 1) / D, o.snap), ease(i / D, o.snap)
+    speed = min(1.0, (e1 - e0) * D / 2.2)
+    return finish(acc, speed, o, W, H, (vx / math.sqrt(2), vy / math.sqrt(2)), math.hypot(W, H))
+
+def finish(acc, speed, o, W, H, axis, L):
+    """Speed-driven look: optional zoom punch, bloom, overexposure, chromatic split along the motion, grain."""
+    if o.zoom > 0 and speed > 0.02:
+        M = cv2.getRotationMatrix2D((W / 2, H / 2), 0, 1.0 + o.zoom * speed)
+        acc = cv2.warpAffine(acc, M, (W, H), flags=cv2.INTER_LINEAR, borderMode=cv2.BORDER_REFLECT)
     if o.bloom > 0 and speed > 0.02:
         hi = np.clip(acc - 0.5, 0, None)
         k = int(max(W, H) * 0.04) | 1
@@ -70,41 +111,13 @@ def whip_frame(a, b, i, D, o, vec, W, H):
     acc *= 1.0 + o.exposure * speed
     if o.chroma > 0 and speed > 0.02:               # split R/B along the motion
         d = o.chroma * L * speed
-        dx, dy = (d, 0) if horizontal else (0, d)
         for ch, sg in ((2, +1), (0, -1)):           # BGR: 2=R, 0=B
-            M = np.float32([[1, 0, sg * dx], [0, 1, sg * dy]])
+            M = np.float32([[1, 0, sg * d * axis[0]], [0, 1, sg * d * axis[1]]])
             acc[:, :, ch] = cv2.warpAffine(acc[:, :, ch], M, (W, H), borderMode=cv2.BORDER_REPLICATE)
     out = np.clip(acc, 0, 1) ** (1 / GAMMA)
     if o.grain > 0:
         out += np.random.normal(0, o.grain * (0.4 + speed), (H, W, 1)).astype(np.float32)
     return (np.clip(out, 0, 1) * 255 + 0.5).astype(np.uint8)
-
-def make_whoosh(path, dur, cut_t, total, sr=48000, direction=0):
-    """Noise with a sweeping low-pass (rising then falling), asymmetric envelope, plus impact."""
-    n = int(total * sr); rng = np.random.default_rng(7)
-    noise = rng.standard_normal(n).astype(np.float32)
-    t = np.arange(n) / sr
-    x = np.clip((t - (cut_t - dur * 0.75)) / (dur * 1.5), 0, 1)     # 0..1 across the whoosh
-    env = np.sin(np.pi * x) ** 1.6 * (1.0 - 0.25 * x)
-    env[(x <= 0) | (x >= 1)] = 0
-    fc = 400 + 5200 * np.sin(np.pi * x) ** 1.3                       # cutoff sweep
-    a = 1 - np.exp(-2 * np.pi * fc / sr)
-    y = np.empty(n, np.float32); s1 = s2 = 0.0
-    for i in range(n):                                               # 2-pole low-pass
-        s1 += a[i] * (noise[i] - s1); s2 += a[i] * (s1 - s2); y[i] = s2
-    y = y - np.concatenate([[0], y[:-1]]) * 0.55                    # lift highs a little
-    y *= env
-    m = (t >= cut_t) & (t < cut_t + 0.5)                            # soft thump at the cut
-    y[m] += 0.9 * np.sin(2 * np.pi * (70 - 25 * (t[m] - cut_t)) * (t[m] - cut_t)) * np.exp(-9 * (t[m] - cut_t))
-    y *= 0.85 / (np.abs(y).max() + 1e-9)
-    pan = np.full(n, 0.5, np.float32)                               # 0 = left, 1 = right
-    if direction:                                                   # sound travels with the whip
-        pan = np.clip(0.5 - direction * (x - 0.5), 0, 1)
-    L, R = y * np.cos(pan * np.pi / 2), y * np.sin(pan * np.pi / 2)
-    st = np.stack([L, R], 1)
-    with wave.open(path, "wb") as w:
-        w.setnchannels(2); w.setsampwidth(2); w.setframerate(sr)
-        w.writeframes((st * 32767).astype("<i2").tobytes())
 
 def has_audio(p):
     r = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=index",
@@ -114,7 +127,7 @@ def has_audio(p):
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("a"); p.add_argument("b"); p.add_argument("out")
-    p.add_argument("--dir", default="left", choices=["left", "right", "up", "down"])
+    p.add_argument("--dir", default="left", choices=["left", "right", "up", "down", "ur", "ul", "dr", "dl"])
     p.add_argument("--duration", type=float, default=None)
     p.add_argument("--shutter", type=float, default=None, help="shutter length in frame-times (1.0 = 360deg)")
     p.add_argument("--samples", type=int, default=400, help="max sub-frames per output frame")
@@ -124,7 +137,9 @@ def main():
     p.add_argument("--exposure", type=float, default=None)
     p.add_argument("--grain", type=float, default=None)
     p.add_argument("--size", default=None); p.add_argument("--fps", type=float)
-    p.add_argument("--sfx", action="store_true"); p.add_argument("--keep-audio", action="store_true")
+    p.add_argument("--zoom", type=float, default=None, help="zoom punch at peak speed, e.g. 0.04")
+    p.add_argument("--only", action="store_true", help="write only the whip segment as its own clip")
+    p.add_argument("--keep-audio", action="store_true")
     p.add_argument("--preset", default="default", choices=sorted(PRESETS))
     o = p.parse_args()
     for k, v in PRESETS[o.preset].items():     # explicit flags win over the preset
@@ -147,7 +162,8 @@ def main():
     for f in frames(o.a, W, H):
         tail.append(f)
         if len(tail) > D:
-            write(tail.popleft()); n_before += 1
+            f0 = tail.popleft(); n_before += 1
+            if not o.only: write(f0)
     if len(tail) < D: sys.exit("clip A shorter than the transition")
     head = []; rest = frames(o.b, W, H)
     for f in rest:
@@ -155,24 +171,18 @@ def main():
         if len(head) == D: break
     if len(head) < D: sys.exit("clip B shorter than the transition")
     for i in range(D):
-        write(whip_frame(tail[i], head[i], i, D, o, None, W, H))
-    for f in rest: write(f)
+        write(whip_frame_diag(tail[i], head[i], i, D, o, W, H) if o.dir in DIAG else whip_frame(tail[i], head[i], i, D, o, None, W, H))
+    for f in rest:
+        if not o.only: write(f)
     ff.stdin.close(); ff.wait()
 
     cut_t = (n_before + D / 2) / fps
     inputs = ["-i", vid]; fc = []; amap = None
-    if o.keep_audio and has_audio(o.a) and has_audio(o.b):
+    if o.keep_audio and not o.only and has_audio(o.a) and has_audio(o.b):
         dA = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", o.a],
                                   capture_output=True, text=True).stdout)
         inputs += ["-i", o.a, "-i", o.b]
         fc.append(f"[1:a]atrim=0:{dA:.3f}[a1];[a1][2:a]acrossfade=d={D / fps:.3f}[ab]"); amap = "[ab]"
-    if o.sfx:
-        wav = os.path.join(tmp, "w.wav"); make_whoosh(wav, D / fps, cut_t, cut_t + 1.2, direction={'left': 1, 'right': -1}.get(o.dir, 0))
-        idx = len(inputs) // 2; inputs += ["-i", wav]
-        if amap:
-            fc.append(f"{amap}[{idx}:a]amix=inputs=2:normalize=0:duration=first[am]"); amap = "[am]"
-        else:
-            fc.append(f"[{idx}:a]apad[am]"); amap = "[am]"
     cmd = ["ffmpeg", "-v", "error", "-y"] + inputs
     if amap:
         cmd += ["-filter_complex", ";".join(fc), "-map", "0:v", "-map", amap, "-c:v", "copy", "-c:a", "aac", "-ac", "2", "-b:a", "192k", "-shortest"]

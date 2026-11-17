@@ -52,11 +52,27 @@ class WipeTests(unittest.TestCase):
         v = probe(self.wipe("p.mp4", "--preset", "vertical", "--size", "160x284"))["video"]
         self.assertEqual((int(v["width"]), int(v["height"])), (160, 284))   # explicit flag beats preset
 
-    def test_sfx_is_stereo_aac_and_keeps_duration(self):
-        out = self.wipe("s.mp4", "--sfx", "--keep-audio")
-        self.assertIn("audio", probe(out))
-        ch = run("ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=channels", "-of", "csv=p=0", out).strip()
-        self.assertEqual(ch, "2")
+    def test_diagonal_directions(self):
+        for d in ("ur", "ul", "dr", "dl"):
+            with self.subTest(d=d):
+                v = probe(self.wipe(f"{d}.mp4", "--dir", d, "--samples", "24"))["video"]
+                self.assertEqual(int(v["nb_read_frames"]), 2 * self.n - round(0.45 * FPS))
+
+    def test_only_writes_just_the_whip_segment(self):
+        for d in ("left", "ur"):
+            with self.subTest(d=d):
+                out = self.wipe(f"only_{d}.mp4", "--only", "--dir", d, "--duration", "0.4", "--samples", "24")
+                v = probe(out)
+                self.assertEqual(int(v["video"]["nb_read_frames"]), round(0.4 * FPS))
+                self.assertNotIn("audio", v)                      # nothing is synthesised
+
+    def test_no_audio_by_default_and_keep_audio_crossfades(self):
+        self.assertNotIn("audio", probe(self.wipe("na.mp4", "--samples", "24")))
+        self.assertIn("audio", probe(self.wipe("ka.mp4", "--keep-audio", "--samples", "24")))
+
+    def test_zoom_flag_runs(self):
+        v = probe(self.wipe("z.mp4", "--zoom", "0.05", "--dir", "dr", "--samples", "24"))["video"]
+        self.assertEqual((int(v["width"]), int(v["height"])), (W, H))
 
     def test_too_short_clip_fails(self):
         short = os.path.join(self.tmp.name, "short.mp4"); make_clip(short, "testsrc2", secs=0.1)

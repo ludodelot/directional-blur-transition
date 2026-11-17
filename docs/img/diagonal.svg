@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 370" width="920" height="370" role="img" aria-labelledby="t d"><title id="t">Diagonal whip canvas</title><desc id="d">A and B sit on opposite corners of a double-size canvas; empty corners are mirror tiles and the clips cross-fade mid-travel.</desc><style>
+:root{--fg:#1f2328;--mut:#59636e;--line:#c9d1d9;--fill:#f6f8fa;--a:#1f6feb;--b:#d1242f;--soft:#ddf4ff;--softb:#ffebe9}
+@media (prefers-color-scheme:dark){:root{--fg:#e6edf3;--mut:#9198a1;--line:#3d444d;--fill:#151b23;--a:#58a6ff;--b:#ff7b72;--soft:#0c2d6b;--softb:#5a1e24}}
+text{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif;fill:var(--fg);font-size:15px}
+.mut{fill:var(--mut);font-size:13px}.t{font-size:18px;font-weight:600}.c{text-anchor:middle}
+.box{fill:var(--fill);stroke:var(--line);stroke-width:1.5}
+.A{fill:var(--soft);stroke:var(--a);stroke-width:2}.B{fill:var(--softb);stroke:var(--b);stroke-width:2}
+.cam{fill:none;stroke:var(--fg);stroke-width:2.5;stroke-dasharray:7 5}
+.arr{stroke:var(--fg);stroke-width:2;fill:none}
+.ax{stroke:var(--line);stroke-width:1.5;fill:none}
+</style>
+<defs><marker id="h" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" fill="currentColor" style="fill:var(--fg)"/></marker></defs><text x="30" y="38" class="t">2 · Diagonal: A and B on opposite corners of a 2W × 2H canvas</text>
+<g transform="translate(70,70)">
+<rect x="0" y="0" width="200" height="130" class="box"/>
+<rect x="200" y="0" width="200" height="130" class="B"/>
+<rect x="0" y="130" width="200" height="130" class="A"/>
+<rect x="200" y="130" width="200" height="130" class="box"/>
+<text x="372" y="112" class="t" style="text-anchor:end">B</text><text x="28" y="158" class="t">A</text>
+<text x="100" y="70" class="c mut">mirror of A</text><text x="300" y="200" class="c mut">mirror of B</text>
+<rect x="0" y="130" width="200" height="130" class="cam"/>
+<rect x="200" y="0" width="200" height="130" class="cam" opacity="0.55"/>
+<path d="M105 205 L290 80" class="arr" marker-end="url(#h)" style="color:var(--fg)"/>
+</g>
+<g transform="translate(520,95)">
+<text x="0" y="0" class="t" style="font-size:16px">Why mirrors?</text>
+<text x="0" y="30">Each clip is mirror-tiled into the empty</text>
+<text x="0" y="52">corners, so there are no seams or black</text>
+<text x="0" y="74">edges while the window crosses them.</text>
+<text x="0" y="112" class="t" style="font-size:16px">Cross-fade</text>
+<text x="0" y="142">Between 40 % and 60 % of the travel the</text>
+<text x="0" y="164">mirrored A fades into the mirrored B,</text>
+<text x="0" y="186">hidden at peak blur.</text>
+</g>
+<text x="30" y="352" class="mut">Directions: ur · ul · dr · dl (up/down + right/left). Very bright skies can leave a symmetric highlight shape at peak blur.</text>
+</svg>
